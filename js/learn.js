@@ -454,7 +454,7 @@
       document.body.classList.add("flat");
       $("#world").style.display = "none";
       $("#bStart").textContent = "افتح خريطة المنهج";
-      $("#startNote").textContent = "تعذّر تشغيل الرسوم ثلاثية الأبعاد على هذا الجهاز، فاللعبة تعمل بخريطة المنهج — كل الدروس والاختبارات متاحة.";
+      $("#startNote").innerHTML = `تعذّر تشغيل الرسوم ثلاثية الأبعاد على هذا الجهاز، فاللعبة تعمل بخريطة المنهج — كل الدروس والاختبارات متاحة.<br><small style="opacity:.6" dir="ltr">${esc(String(msg || "").slice(0, 160))}</small>`;
       console.warn("world failed:", msg);
     },
   };
