@@ -398,10 +398,10 @@
         <h3>${esc(C.ranks[rankIndex(S.xp)])}</h3>
         <p>أتمّ مراجعة مقرر «${esc(C.meta.title)}» — ${esc(C.meta.level)} — بوحداته السبع ودروسه الثلاثين،<br>بمتوسط ${AR(Math.round(avg * 100))}٪ في اختبارات الوحدات، و${AR(S.xp)} نقطة خبرة.</p>
         <p style="font-size:var(--t-sm);color:var(--ink-2)">${d}</p>
-        <div class="noprint"><button class="btn gold" id="pr">🖨️ طباعة / حفظ PDF</button></div></div>`;
+        <div class="noprint"><button class="btn gold" id="pr">🖨️ طباعة / حفظ PDF</button><div style="font-size:var(--t-xs);color:var(--ink-2);margin-top:6px">إن لم تظهر نافذة الطباعة هنا، فالتقط صورة للشهادة.</div></div></div>`;
       const inp = body.querySelector("#nameIn");
       inp.oninput = () => { S.name = inp.value.slice(0, 60); body.querySelector("#certName").textContent = S.name || "…"; save(); };
-      body.querySelector("#pr").onclick = () => window.print();
+      body.querySelector("#pr").onclick = () => { try { window.print(); } catch (e) { toast("الطباعة غير متاحة هنا — التقط صورة للشهادة"); } };
     } });
   }
 

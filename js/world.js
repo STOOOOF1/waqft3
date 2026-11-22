@@ -220,7 +220,15 @@ export async function start(L) {
   const plazaGroup = plaza.build(mats); scene.add(plazaGroup);
   const water = new THREE.Mesh(new THREE.CircleGeometry(2.95, 32).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: COL.water, emissive: 0x1a5d66, emissiveIntensity: 0.6, roughness: 0.2, metalness: 0.1 }));
   water.position.set(0, 0.72, 0); scene.add(water);
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2), new THREE.MeshBasicMaterial({ color: 0x2fa596 }));
+  const boardTex = (() => { // رسم بلا نص: المدينة من أعلى
+    const c = document.createElement("canvas"); c.width = 320; c.height = 200; const g = c.getContext("2d");
+    g.fillStyle = "#f3e4c6"; g.fillRect(0, 0, 320, 200); g.strokeStyle = "#a4532d"; g.lineWidth = 6; g.strokeRect(6, 6, 308, 188);
+    g.strokeStyle = "#c99a62"; g.lineWidth = 3;
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; g.beginPath(); g.moveTo(160, 100); g.lineTo(160 + Math.sin(a) * 70, 100 - Math.cos(a) * 70); g.stroke(); }
+    g.beginPath(); g.arc(160, 100, 16, 0, Math.PI * 2); g.fillStyle = "#1f7a73"; g.fill();
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; g.beginPath(); g.arc(160 + Math.sin(a) * 70, 100 - Math.cos(a) * 70, 11, 0, Math.PI * 2); g.fillStyle = "#e3a73b"; g.fill(); g.strokeStyle = "#a4532d"; g.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2), new THREE.MeshBasicMaterial({ map: boardTex }));
   board.position.set(-5 + Math.sin(0.5) * 0.17, 2.1, 6 + Math.cos(0.5) * 0.17); board.rotation.y = 0.5; scene.add(board);
   const guide = new THREE.Group();
   { const g = new Builder(); g.cyl(0.42, 0.55, 1.4, 0, 0, 0, 0x7a3b2a, 12); g.ball(0.33, 0, 1.68, 0, COL.skin); g.ball(0.36, 0, 1.86, 0, COL.white); g.cyl(0.05, 0.05, 2.1, 0.55, 0, 0.1, COL.wood, 6);
@@ -265,7 +273,7 @@ export async function start(L) {
   [pillars, caps, lamps, halos].forEach(o => scene.add(o));
 
   // ---------- عمود الهدف ----------
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 60, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 60, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
   beam.position.y = 30; scene.add(beam);
 
   // ---------- الزخرفة: بيوت ونخيل وفوانيس الطرق ----------
@@ -329,7 +337,7 @@ export async function start(L) {
   // ---------- تسميات DOM ----------
   const labelsEl = document.getElementById("labels");
   const mkLabel = (cls, html) => { const d = document.createElement("div"); d.className = "lbl " + cls; d.innerHTML = html; labelsEl.appendChild(d); return d; };
-  landmarks.forEach((l, i) => { l.label = mkLabel("unit", `${L.ar(i + 1)}. ${l.unit.title}<small>${l.unit.emblem}</small>`); l.labelPos = l.pos.clone().setY(i === 0 ? 19 : 13); });
+  landmarks.forEach((l, i) => { l.label = mkLabel("unit", `${L.ar(i + 1)}. ${l.unit.title}<small>${l.unit.emblem}</small>`); l.labelPos = l.center.clone().setY(10.5); });
   posts.forEach(p => { p.label = mkLabel("post", `${L.ref(p.lesson.n)} · ${p.lesson.title}`); p.labelPos = p.pos.clone().setY(3.5); });
   const boardLabel = mkLabel("unit", "خريطة المنهج<small>اضغط لفتحها</small>"); const boardPos = new THREE.Vector3(-5, 3.6, 6);
   const guideLabel = mkLabel("unit", "المرشد<small>مراجعة قبل الاختبار</small>"); const guidePos = new THREE.Vector3(5, 2.9, 6);
@@ -367,7 +375,7 @@ export async function start(L) {
 
   // ---------- الإدخال ----------
   const keys = new Set();
-  let yaw = 0, pitch = 0.42, dist = 12, paused = false;
+  let yaw = 0, pitch = 0.3, dist = 11, paused = false;
   const stick = { x: 0, y: 0, active: false };
   addEventListener("keydown", e => { if (paused || /INPUT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName)) return; keys.add(e.code); if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault(); });
   addEventListener("keyup", e => keys.delete(e.code));
@@ -415,7 +423,7 @@ export async function start(L) {
   }
 
   // ---------- الحلقة ----------
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
   const tmp = new THREE.Vector3(), fwd = new THREE.Vector3(), right = new THREE.Vector3();
   let lastPrompt = null;
   let facing = Math.PI, bob = 0, fpsAcc = 0, fpsN = 0, autoChecked = false, elapsed = 0;
@@ -467,11 +475,11 @@ export async function start(L) {
   function frameLoop() {
     requestAnimationFrame(frameLoop);
     if (paused) return;
-    const dt = Math.min(0.05, clock.getDelta()); elapsed += dt;
+    timer.update(); const dt = Math.min(0.05, timer.getDelta()); elapsed += dt;
     step(dt);
     water.material.emissiveIntensity = 0.5 + Math.sin(elapsed * 2.2) * 0.15;
     halos.material.opacity = 0.24 + Math.sin(elapsed * 3) * 0.06;
-    beam.material.opacity = 0.16 + Math.sin(elapsed * 2) * 0.07;
+    beam.material.opacity = 0.12 + Math.sin(elapsed * 2) * 0.05;
     guide.rotation.y = -0.6 + Math.sin(elapsed * 0.8) * 0.15;
     if (motes.visible) { motes.rotation.y += dt * 0.01; motes.position.y = Math.sin(elapsed * 0.3) * 0.4; }
     renderer.render(scene, camera);
@@ -484,18 +492,22 @@ export async function start(L) {
   frameLoop();
 
   const api = {
-    pause(v) { paused = !!v; lastPrompt = null; if (v) { keys.clear(); L.setPrompt(null); labelsEl.style.visibility = "hidden"; } else { clock.getDelta(); labelsEl.style.visibility = ""; } },
+    pause(v) { paused = !!v; lastPrompt = null; if (v) { keys.clear(); L.setPrompt(null); labelsEl.style.visibility = "hidden"; } else { timer.update(); labelsEl.style.visibility = ""; } },
     goTo(id) {
       let target, look;
       const p = posts.find(x => x.lesson.id === id);
       if (p) { target = p.pos; look = landmarks[p.i].pos; }
       else { const i = units.findIndex(u => u.id === id); if (i < 0) return; target = gatePos[i]; look = landmarks[i].pos; }
+      const isPost = !!p;
       tmp.set(-look.x, 0, -look.z).normalize();
-      player.position.set(target.x + tmp.x * 2.4, 0, target.z + tmp.z * 2.4);
-      yaw = Math.atan2(tmp.x, tmp.z); facing = yaw + Math.PI; pitch = 0.4; dist = 10;
+      const off = isPost ? 2.4 : 1.6;
+      player.position.set(target.x + tmp.x * off, 0, target.z + tmp.z * off);
+      yaw = Math.atan2(tmp.x, tmp.z); facing = yaw + Math.PI; pitch = isPost ? 0.32 : 0.9; dist = isPost ? 10 : 9;
     },
     isLow: () => low, setLow,
+    info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, low, player: player.position.toArray().map(v => +v.toFixed(1)) }),
   };
+  window.__W = api;
   L.worldReady(api);
   return api;
 }
